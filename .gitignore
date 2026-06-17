@@ -1,0 +1,14 @@
+# Ignore database config
+DBConn.php
+
+# Ignore WAMP specific files
+*.log
+*.tmp
+
+# Ignore IDE files
+.vscode/
+*.code-workspace
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

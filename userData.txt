@@ -1,0 +1,167 @@
+===================================
+CLOTHING STORE DATABASE
+FICTITIOUS ENTRIES FOR TESTING
+
+
+-----------------------
+ USER
+-----------------------
+User ID: 1001
+Username: sarah_johnson
+Email: sarah.j@example.com
+Password: (hashed) $2y$10$TestHashForSarah123
+First Name: Sarah
+Last Name: Johnson
+Address: 123 Fashion Avenue, Suite 4B
+
+-----------------------
+ USER
+-----------------------
+User ID: 1002
+Email: mike.w@fakeemail.com
+Password: (hashed) $2y$10$TestHashForMike456
+First Name: Michael
+Last Name: Wilson
+Address: 456 Oak Street
+
+-----------------------
+ ADMIN
+-----------------------
+Admin ID: 5001
+Username: admin_test
+Email: admin@teststore.com
+Password: (hashed) $2y$10$TestHashForAdmin789
+Full Name: Test Administrator
+Role: super_admin
+Phone: (555) 555-5555
+Created At: 2024-10-01 08:00:00
+Last Login: 2026-05-03 07:30:00
+Status: Active
+Permissions: full_access, manage_users, manage_products, view_reports
+
+-----------------------
+ ORDER
+-----------------------
+Order ID: 25001
+User ID: 1001 (sarah_johnson)
+Order Date: 2026-04-28 15:20:00
+Total Amount: $156.47
+Shipping Address: 123 Fashion Avenue, Suite 4B, New York, NY 10001
+Tracking Number: 1Z999AA10123456784
+Products in Order:
+  - Product: Blue Denim Jacket (Qty: 1, Price: $79.99)
+  - Product: White Cotton T-Shirt (Qty: 2, Price: $19.99 each)
+  - Product: Black Skinny Jeans (Qty: 1, Price: $49.99)
+
+-----------------------
+ CLOTHES (PRODUCT)
+-----------------------
+Product ID: 7501
+Product Name: Premium Leather Jacket - Black
+Category: men
+Subcategory: jackets
+On Sale: Yes
+Description: Premium genuine leather jacket with zipper closure and multiple pockets. Perfect for casual and semi-formal occasions.
+
+-----------------------
+CLOTHES (PRODUCT)
+-----------------------
+Product ID: 7502
+Product Name: Floral Summer Maxi Dress
+Category: women
+Subcategory: dresses
+On Sale: No
+Description: Flowy maxi dress with floral print, adjustable straps, and pockets. Perfect for summer parties and beach days.
+
+
+<?php
+
+include "DBConn.php";
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+try{
+    $connect = new mysqli($server_name, $username, $password, $database);
+
+    //drop and recreate the users table 
+    $query = mysqli_query($connect, "drop table if exists users");
+
+    $users = "create table users (user_id int auto_increment primary key, username varchar(100) unique, email varchar(100), password_hash varchar(255), name varchar(100), surname varchar(100), address text, registration_date timestamp default current_timestamp);";
+    mysqli_query($connect, $users);
+
+    $lines = file("userData.txt");
+    $users = [];
+    $current_user = [];
+    $in_user_section = false;
+
+    foreach($lines as $line){
+        if(strpos($line, 'user') !==false && strpos($line, "---") !== false){
+            if(!empty($current_user) && isset($current_user['email'])){
+                $user[] = $current_user;
+            }
+            $current_user = [];
+            $in_user_section = true;
+            continue;
+        }
+        if($in_user_section && (strpos($line, 'admin') !==false || strpos($line, 'order') !==false || strpos($line, 'clothes') !==false)){
+            $in_user_section = false;
+            if(!empty($current_user) && isset($current_user['email'])){
+                $users[] = $current_user;
+            }
+            $current_user = [];
+            continue;
+        }
+
+        if($in_user_section && strpos($line, ':') !== false){
+            $parts = explode(':', $line, 2);
+            if(count($parts) == 2){
+                $key = trim($parts[0]);
+                $value = trim($parts[1]);
+
+                if($key == 'Username') $current_user['username'] = $value;
+                elseif($key == 'Email') $current_user['email'] = $value;
+                elseif($key == 'Password') $current_user['password_hash'] = $value;
+                elseif($key == 'First Name') $current_user['name'] = $value;
+                elseif($key == 'Last Name') $current_user['surname'] = $value;
+                elseif($key == 'Address') $current_user['address'] = $value;
+            }
+        }
+    }
+   foreach ($users as $user) {
+    $username = $user['username'] ?? '';
+    $email = $user['email'];
+    $password_hash = $user['password_hash'] ?? '';
+    $first_name = $user['first_name'] ?? '';
+    $last_name = $user['last_name'] ?? '';
+    $address = $user['address'] ?? '';
+    
+    $sql = "INSERT INTO Users (username, email, password_hash, first_name, last_name, address) 
+            VALUES ('$username', '$email', '$password_hash', '$first_name', '$last_name', '$address')";
+    
+    if (mysqli_query($connect, $sql)) {
+        echo "✓ Inserted: $first_name $last_name ($email)<br>";
+    } else {
+        echo "✗ Failed: " . mysqli_error($connect) . "<br>";
+    }
+}
+
+   
+    $result = mysqli_query($connect, "select * from Users");
+    
+    echo "<table border='1' cellpadding='5'>";
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td>{$row['user_id']}</td>";
+        echo "<td>{$row['username']}</td>";
+        echo "<td>{$row['email']}</td>";
+        echo "<td>{$row['first_name']} {$row['last_name']}</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+    mysqli_close($connect);
+}
+catch(Exception $e){
+    die("Error: " . $e->getMessage());
+}
+
+?>
