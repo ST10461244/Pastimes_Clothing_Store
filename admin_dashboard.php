@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_customer'])) {
     $name = trim($_POST['name']);
     $surname = trim($_POST['surname']);
     $address = trim($_POST['address']);
+    $user_role = in_array($_POST['user_role'] ?? '', ['buyer', 'seller']) ? $_POST['user_role'] : 'buyer';
     
     $errors = [];
     
@@ -69,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_customer'])) {
             $message_type = "error";
         } else {
             $password_hash = md5($password);
-            $insert_stmt = $connect->prepare("INSERT INTO users (username, email, password_hash, name, surname, address, verification_status, user_role) VALUES (?, ?, ?, ?, ?, ?, 'verified', 'user')");
-            $insert_stmt->bind_param("ssssss", $username, $email, $password_hash, $name, $surname, $address);
+            $insert_stmt = $connect->prepare("INSERT INTO users (username, email, password_hash, name, surname, address, verification_status, user_role) VALUES (?, ?, ?, ?, ?, ?, 'verified', ?)");
+            $insert_stmt->bind_param("sssssss", $username, $email, $password_hash, $name, $surname, $address, $user_role);
             
             if ($insert_stmt->execute()) {
                 $message = "✅ Customer added successfully!";
@@ -96,9 +97,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_customer'])) {
     $name = trim($_POST['name']);
     $surname = trim($_POST['surname']);
     $address = trim($_POST['address']);
-    
-    $update_stmt = $connect->prepare("UPDATE users SET username = ?, email = ?, name = ?, surname = ?, address = ? WHERE user_id = ?");
-    $update_stmt->bind_param("sssssi", $username, $email, $name, $surname, $address, $user_id);
+    $user_role = $_POST['user_role'] ?? '';
+
+    if (in_array($user_role, ['buyer', 'seller'])) {
+        // Also allow updating the role, but never let this form downgrade/touch a real admin account
+        $update_stmt = $connect->prepare("UPDATE users SET username = ?, email = ?, name = ?, surname = ?, address = ?, user_role = ? WHERE user_id = ? AND user_role != 'admin'");
+        $update_stmt->bind_param("ssssssi", $username, $email, $name, $surname, $address, $user_role, $user_id);
+    } else {
+        $update_stmt = $connect->prepare("UPDATE users SET username = ?, email = ?, name = ?, surname = ?, address = ? WHERE user_id = ?");
+        $update_stmt->bind_param("sssssi", $username, $email, $name, $surname, $address, $user_id);
+    }
     
     if ($update_stmt->execute()) {
         $message = "✏️ Customer updated successfully!";
@@ -137,7 +145,7 @@ $customers_query = "SELECT user_id, username, email, name, surname, address, ver
 $customers_result = $connect->query($customers_query);
 
 // Fetch pending verifications
-$pending_query = "SELECT user_id, username, email, name, surname, registration_date FROM users WHERE verification_status = 'pending' ORDER BY registration_date DESC";
+$pending_query = "SELECT user_id, username, email, name, surname, user_role, registration_date FROM users WHERE verification_status = 'pending' ORDER BY registration_date DESC";
 $pending_result = $connect->query($pending_query);
 
 // Fetch customer for editing (if edit clicked)
@@ -150,6 +158,31 @@ if (isset($_GET['edit_id'])) {
     $edit_result = $edit_query->get_result();
     $edit_customer = $edit_result->fetch_assoc();
     $edit_query->close();
+}
+
+// Fetch all ratings across the store, with buyer and seller usernames
+$ratings_table_check = $connect->query("SHOW TABLES LIKE 'ratings'");
+$ratings_list = [];
+$avg_rating = null;
+$rating_count = 0;
+if ($ratings_table_check && $ratings_table_check->num_rows > 0) {
+    $ratings_query = "
+        SELECT r.rating, r.comment, r.created_at, ol.product_name,
+               buyer.username AS buyer_username,
+               seller.username AS seller_username
+        FROM ratings r
+        JOIN order_lines ol ON r.line_id = ol.line_id
+        JOIN users buyer ON r.user_id = buyer.user_id
+        LEFT JOIN users seller ON r.seller_id = seller.user_id
+        ORDER BY r.created_at DESC";
+    $ratings_result = $connect->query($ratings_query);
+    if ($ratings_result) {
+        $ratings_list = $ratings_result->fetch_all(MYSQLI_ASSOC);
+        $rating_count = count($ratings_list);
+        if ($rating_count > 0) {
+            $avg_rating = array_sum(array_column($ratings_list, 'rating')) / $rating_count;
+        }
+    }
 }
 ?>
 
@@ -209,6 +242,26 @@ if (isset($_GET['edit_id'])) {
 
         .logout-btn:hover {
             transform: scale(1.05);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.25);
         }
 
         .message {
@@ -408,6 +461,59 @@ if (isset($_GET['edit_id'])) {
         .close-modal:hover {
             color: #333;
         }
+
+        .rating-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            background: #fff9e6;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .rating-summary .avg-score {
+            font-size: 32px;
+            font-weight: 700;
+            color: #d99c00;
+        }
+
+        .rating-summary .avg-stars {
+            color: #f5b301;
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+
+        .rating-summary .count {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .rating-card {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+        }
+
+        .rating-card .stars-display {
+            color: #f5b301;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+
+        .rating-card .rating-meta {
+            font-size: 12px;
+            color: #999;
+            margin: 4px 0 6px;
+        }
+
+        .rating-card .rating-comment {
+            font-size: 14px;
+            color: #444;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -417,7 +523,10 @@ if (isset($_GET['edit_id'])) {
                 <h1>Admin Dashboard</h1>
                 <p>Welcome, <?php echo htmlspecialchars($_SESSION['admin_name']); ?> (<?php echo htmlspecialchars($_SESSION['admin_username']); ?>)</p>
             </div>
-            <a href="admin_login.php?logout=1" class="logout-btn" onclick="sessionStorage.clear();">Logout</a>
+            <div class="header-actions">
+                <a href="admin_clothes.php" class="nav-btn">👕 Manage Clothing</a>
+                <a href="admin_login.php?logout=1" class="logout-btn" onclick="sessionStorage.clear();">Logout</a>
+            </div>
         </div>
 
         <?php if ($message): ?>
@@ -434,6 +543,7 @@ if (isset($_GET['edit_id'])) {
                     <h4><?php echo htmlspecialchars($pending['username']); ?></h4>
                     <p><?php echo htmlspecialchars($pending['email']); ?></p>
                     <p><?php echo htmlspecialchars($pending['name'] . ' ' . $pending['surname']); ?></p>
+                    <p>Requested role: <strong><?php echo htmlspecialchars(ucfirst($pending['user_role'] ?? 'buyer')); ?></strong></p>
                     <p>Registered: <?php echo date('M d, Y', strtotime($pending['registration_date'])); ?></p>
                     <div class="pending-actions">
                         <a href="?verify_id=<?php echo $pending['user_id']; ?>" class="btn-success" style="padding: 5px 10px; border-radius: 5px; text-decoration: none; color: white; background: #27ae60; display: inline-block;">Verify</a>
@@ -455,6 +565,10 @@ if (isset($_GET['edit_id'])) {
                     <input type="password" name="password" placeholder="Password (min 6 chars) *" required>
                     <input type="text" name="name" placeholder="First Name">
                     <input type="text" name="surname" placeholder="Last Name">
+                    <select name="user_role">
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                    </select>
                     <textarea name="address" placeholder="Address" rows="2"></textarea>
                 </div>
                 <button type="submit" name="add_customer" style="margin-top: 15px;">Add Customer</button>
@@ -473,6 +587,12 @@ if (isset($_GET['edit_id'])) {
                     <input type="email" name="email" value="<?php echo htmlspecialchars($edit_customer['email']); ?>" required>
                     <input type="text" name="name" value="<?php echo htmlspecialchars($edit_customer['name'] ?? ''); ?>">
                     <input type="text" name="surname" value="<?php echo htmlspecialchars($edit_customer['surname'] ?? ''); ?>">
+                    <?php if (($edit_customer['user_role'] ?? '') !== 'admin'): ?>
+                    <select name="user_role">
+                        <option value="buyer" <?php echo ($edit_customer['user_role'] ?? '') === 'buyer' ? 'selected' : ''; ?>>Buyer</option>
+                        <option value="seller" <?php echo ($edit_customer['user_role'] ?? '') === 'seller' ? 'selected' : ''; ?>>Seller</option>
+                    </select>
+                    <?php endif; ?>
                     <textarea name="address" rows="3"><?php echo htmlspecialchars($edit_customer['address'] ?? ''); ?></textarea>
                     <button type="submit" name="update_customer" style="margin-top: 15px;">Save Changes</button>
                 </form>
@@ -491,6 +611,7 @@ if (isset($_GET['edit_id'])) {
                             <th>Username</th>
                             <th>Email</th>
                             <th>Name</th>
+                            <th>Role</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -502,6 +623,7 @@ if (isset($_GET['edit_id'])) {
                             <td><?php echo htmlspecialchars($customer['username']); ?></td>
                             <td><?php echo htmlspecialchars($customer['email']); ?></td>
                             <td><?php echo htmlspecialchars($customer['name'] . ' ' . $customer['surname']); ?></td>
+                            <td><?php echo htmlspecialchars(ucfirst($customer['user_role'] ?? 'buyer')); ?></td>
                             <td>
                                 <span class="badge badge-<?php echo $customer['verification_status']; ?>">
                                     <?php echo ucfirst($customer['verification_status']); ?>
@@ -521,6 +643,36 @@ if (isset($_GET['edit_id'])) {
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- All Ratings -->
+        <div class="section">
+            <h2>⭐ Customer Ratings</h2>
+            <?php if ($rating_count > 0): ?>
+                <div class="rating-summary">
+                    <div class="avg-score"><?php echo number_format($avg_rating, 1); ?></div>
+                    <div>
+                        <div class="avg-stars"><?php echo str_repeat('★', round($avg_rating)) . str_repeat('☆', 5 - round($avg_rating)); ?></div>
+                        <div class="count">Store-wide average across <?php echo $rating_count; ?> rating<?php echo $rating_count == 1 ? '' : 's'; ?></div>
+                    </div>
+                </div>
+                <?php foreach ($ratings_list as $r): ?>
+                    <div class="rating-card">
+                        <div class="stars-display"><?php echo str_repeat('★', $r['rating']) . str_repeat('☆', 5 - $r['rating']); ?></div>
+                        <div class="rating-meta">
+                            <?php echo htmlspecialchars($r['product_name']); ?> &middot;
+                            Buyer: <?php echo htmlspecialchars($r['buyer_username']); ?> &middot;
+                            Seller: <?php echo htmlspecialchars($r['seller_username'] ?? 'Admin/Store'); ?> &middot;
+                            <?php echo date('d M Y', strtotime($r['created_at'])); ?>
+                        </div>
+                        <?php if ($r['comment']): ?>
+                            <div class="rating-comment">"<?php echo htmlspecialchars($r['comment']); ?>"</div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p style="color:#999; padding: 10px 0;">No ratings yet. Once buyers rate their purchases, feedback for every seller will show up here.</p>
+            <?php endif; ?>
         </div>
     </div>
 </body>

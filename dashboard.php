@@ -211,6 +211,9 @@ if (isset($_GET['msg'])) {
             <h1>User <?php echo htmlspecialchars(($_SESSION['name'] ?? '') . ' ' . ($_SESSION['surname'] ?? '')); ?> is logged in</h1>
             <p>Welcome to your Clothing Store dashboard!</p>
             <a href="products.php" class="shop-btn">Shop Now</a>
+            <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'seller'): ?>
+            <a href="seller_dashboard.php" class="shop-btn" style="background:#6f42c1;">Seller Dashboard</a>
+            <?php endif; ?>
             <a href="login.php?logout=1" class="logout-btn">Logout</a>
         </div>
         

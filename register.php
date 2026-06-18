@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     $name = trim($_POST['name']);
     $surname = trim($_POST['surname']);
     $address = trim($_POST['address']);
+    $account_type = trim($_POST['account_type'] ?? '');
 
     $errors = [];
 
@@ -29,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Invalid email format";
     if (strlen($password) < 6) $errors[] = "Password must be at least 6 characters";
     if (strlen($username) < 3) $errors[] = "Username must be at least 3 characters";
+    if (!in_array($account_type, ['buyer', 'seller'])) $errors[] = "Please select an account type";
 
     if (empty($errors)) {
         $check_stmt = $connect->prepare("SELECT user_id FROM users WHERE username = ? OR email = ?");
@@ -41,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         } else {
             $password_hash = md5($password);
             
-            $insert_stmt = $connect->prepare("INSERT INTO users (username, email, password_hash, name, surname, address, verification_status, user_role) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'user')");
-            $insert_stmt->bind_param("ssssss", $username, $email, $password_hash, $name, $surname, $address);
+            $insert_stmt = $connect->prepare("INSERT INTO users (username, email, password_hash, name, surname, address, verification_status, user_role) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)");
+            $insert_stmt->bind_param("sssssss", $username, $email, $password_hash, $name, $surname, $address, $account_type);
             
             if ($insert_stmt->execute()) {
                 $success_message = "✓ Registration successful! Your account is pending administrator verification. You will be able to login once verified.";
@@ -202,6 +204,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         .required {
             color: #ff6b6b;
         }
+
+        .role-select {
+            display: flex;
+            gap: 12px;
+            margin: 10px 0;
+        }
+
+        .role-option {
+            flex: 1;
+            position: relative;
+        }
+
+        .role-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .role-option label {
+            display: block;
+            text-align: center;
+            padding: 16px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.2s ease;
+        }
+
+        .role-option label .role-icon {
+            display: block;
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .role-option label .role-sub {
+            display: block;
+            font-size: 11px;
+            font-weight: 400;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .role-option input[type="radio"]:checked + label {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.08);
+            color: #4a4ad1;
+        }
+
+        .role-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-top: 12px;
+            margin-bottom: -4px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -219,6 +283,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         <form method="POST">
             <input type="text" name="reg_username" placeholder=" Username *" value="<?php echo isset($form_data['reg_username']) ? htmlspecialchars($form_data['reg_username']) : ''; ?>" required>
             <input type="email" name="reg_email" placeholder=" Email *" value="<?php echo isset($form_data['reg_email']) ? htmlspecialchars($form_data['reg_email']) : ''; ?>" required>
+
+            <span class="role-label">I want to register as a: *</span>
+            <div class="role-select">
+                <?php $selected_type = $form_data['account_type'] ?? 'buyer'; ?>
+                <div class="role-option">
+                    <input type="radio" id="role_buyer" name="account_type" value="buyer" <?php echo $selected_type === 'buyer' ? 'checked' : ''; ?> required>
+                    <label for="role_buyer">
+                        <span class="role-icon">🛍️</span>
+                        Buyer
+                        <span class="role-sub">Shop for clothes</span>
+                    </label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" id="role_seller" name="account_type" value="seller" <?php echo $selected_type === 'seller' ? 'checked' : ''; ?> required>
+                    <label for="role_seller">
+                        <span class="role-icon">🏷️</span>
+                        Seller
+                        <span class="role-sub">List clothes for sale</span>
+                    </label>
+                </div>
+            </div>
+
             <input type="text" name="name" placeholder=" First Name" value="<?php echo isset($form_data['name']) ? htmlspecialchars($form_data['name']) : ''; ?>">
             <input type="text" name="surname" placeholder=" Last Name" value="<?php echo isset($form_data['surname']) ? htmlspecialchars($form_data['surname']) : ''; ?>">
             <input type="password" name="reg_password" placeholder=" Password (min 6 chars) *" required>
