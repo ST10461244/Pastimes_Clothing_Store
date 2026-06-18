@@ -131,4 +131,71 @@ if (mysqli_num_rows($check_result) == 0) {
 }
 
 mysqli_close($connect);
+
+// Add escrow columns to orders table (check if they exist first)
+$escrow_check = mysqli_query($connect, "SHOW COLUMNS FROM orders LIKE 'escrow_status'");
+if (mysqli_num_rows($escrow_check) == 0) {
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN escrow_status ENUM('pending', 'held', 'released', 'refunded') DEFAULT 'pending'");
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN escrow_amount DECIMAL(10,2)");
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN seller_id INT");
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN buyer_confirmed BOOLEAN DEFAULT FALSE");
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN delivery_confirmed_at TIMESTAMP NULL");
+    mysqli_query($connect, "ALTER TABLE orders ADD COLUMN negotiation_id INT");
+    echo "✅ Escrow columns added to orders table<br>";
+} else {
+    echo "• Escrow columns already exist in orders table<br>";
+}
+
+// Create negotiations table
+$neg_check = mysqli_query($connect, "SHOW TABLES LIKE 'negotiations'");
+if (mysqli_num_rows($neg_check) == 0) {
+    mysqli_query($connect, "CREATE TABLE negotiations (
+        negotiation_id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT,
+        buyer_id INT NOT NULL,
+        seller_id INT NOT NULL,
+        offered_price DECIMAL(10,2),
+        counter_price DECIMAL(10,2),
+        status ENUM('pending', 'accepted', 'rejected', 'countered', 'expired') DEFAULT 'pending',
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+        FOREIGN KEY (buyer_id) REFERENCES users(user_id) ON DELETE CASCADE,
+        FOREIGN KEY (seller_id) REFERENCES users(user_id) ON DELETE CASCADE
+    )");
+    echo "✅ Negotiations table created<br>";
+} else {
+    echo "• Negotiations table already exists<br>";
+}
+
+// Create offer history table
+$history_check = mysqli_query($connect, "SHOW TABLES LIKE 'offer_history'");
+if (mysqli_num_rows($history_check) == 0) {
+    mysqli_query($connect, "CREATE TABLE offer_history (
+        history_id INT AUTO_INCREMENT PRIMARY KEY,
+        negotiation_id INT,
+        offered_by ENUM('buyer', 'seller'),
+        price DECIMAL(10,2),
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (negotiation_id) REFERENCES negotiations(negotiation_id) ON DELETE CASCADE
+    )");
+    echo "✅ Offer history table created<br>";
+} else {
+    echo "• Offer history table already exists<br>";
+}
+
+// Add seller_id column to clothes (if missing)
+$col_check = mysqli_query($connect, "SHOW COLUMNS FROM clothes LIKE 'seller_id'");
+if ($col_check && mysqli_num_rows($col_check) == 0) {
+    if (mysqli_query($connect, "ALTER TABLE clothes ADD COLUMN seller_id INT DEFAULT NULL")) {
+        echo "✅ seller_id column added to clothes<br>";
+        // Add foreign key
+        mysqli_query($connect, "ALTER TABLE clothes ADD FOREIGN KEY (seller_id) REFERENCES users(user_id) ON DELETE SET NULL");
+    } else {
+        echo "Error adding seller_id: " . mysqli_error($connect) . "<br>";
+    }
+}
 ?>
+
