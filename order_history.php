@@ -135,9 +135,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f4f4f8;color:#333}
         <span class="status-badge status-<?php echo $order['payment_status']; ?>">
           <?php echo ucfirst($order['payment_status']); ?>
         </span>
-        <span class="status-badge status-<?php echo $order['order_status']; ?>">
-          <?php echo ucfirst($order['order_status']); ?>
-        </span>
+       
       </div>
 
       <table class="lines-table">

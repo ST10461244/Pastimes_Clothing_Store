@@ -252,13 +252,16 @@ if (!$feed_query) {
         <!-- Header -->
         <div class="feed-header">
             <h2><i class="fas fa-store"></i> Style Feed</h2>
-            <div class="nav-links">
-                <a href="products.php" title="Shop"><i class="fas fa-shopping-bag"></i></a>
-                <?php if ($is_logged_in): ?>
-                    <a href="dashboard.php" title="Profile"><i class="fas fa-user"></i></a>
-                    <a href="login.php?logout=1" title="Logout" style="font-size: 16px; color: #e74c3c;"><i class="fas fa-sign-out-alt"></i></a>
-                <?php endif; ?>
-            </div>
+           <div class="nav-links">
+    <a href="products.php" title="Shop"><i class="fas fa-shopping-bag"></i></a>
+    <a href="negotiation.php" title="Negotiate"><i class="fas fa-handshake"></i></a>
+    <a href="escrow_dashboard.php" title="Escrow"><i class="fas fa-shield-alt"></i></a>
+    <a href="cart.php" title="Cart"><i class="fas fa-shopping-cart"></i></a>
+    <?php if ($is_logged_in): ?>
+        <a href="dashboard.php" title="Profile"><i class="fas fa-user"></i></a>
+        <a href="login.php?logout=1" title="Logout" style="font-size: 16px; color: #e74c3c;"><i class="fas fa-sign-out-alt"></i></a>
+    <?php endif; ?>
+</div>
         </div>
         
         <!-- Feed Posts -->

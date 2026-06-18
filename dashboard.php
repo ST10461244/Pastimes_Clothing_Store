@@ -210,12 +210,22 @@ if (isset($_GET['msg'])) {
         <div class="welcome-banner">
             <h1>User <?php echo htmlspecialchars(($_SESSION['name'] ?? '') . ' ' . ($_SESSION['surname'] ?? '')); ?> is logged in</h1>
             <p>Welcome to your Clothing Store dashboard!</p>
-            <a href="products.php" class="shop-btn">Shop Now</a>
-            <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'seller'): ?>
-            <a href="seller_dashboard.php" class="shop-btn" style="background:#6f42c1;">Seller Dashboard</a>
-            <?php endif; ?>
-            <a href="login.php?logout=1" class="logout-btn">Logout</a>
         </div>
+
+        <div class="nav-grid" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+    <a href="products.php" class="shop-btn" style="background: #667eea;">Shop</a>
+    <a href="cart.php" class="shop-btn" style="background: #27ae60;">Cart</a>
+    <a href="negotiation.php" class="shop-btn" style="background: #3498db;">Negotiate</a>
+    <a href="escrow_dashboard.php" class="shop-btn" style="background: #f39c12;">Escrow</a>
+    <a href="style_feed.php" class="shop-btn" style="background: #e1306c;">Style Feed</a>
+    <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'seller'): ?>
+        <a href="seller_dashboard.php" class="shop-btn" style="background: #6f42c1;">Seller Dashboard</a>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
+        <a href="admin_dashboard.php" class="shop-btn" style="background: #e74c3c;">Admin</a>
+    <?php endif; ?>
+    <a href="login.php?logout=1" class="logout-btn"> Logout</a>
+</div>
         
         <!-- User Data Table (Associative Array Approach as required) -->
         <div class="data-table">

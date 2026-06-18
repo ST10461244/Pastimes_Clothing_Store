@@ -263,10 +263,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f4f4f8;color:#333}
 <div class="header">
   <h1>&#128722; Shopping Cart</h1>
   <div class="header-links">
-    <a href="products.php" class="continue-btn">&#8592; Continue Shopping</a>
+    <a href="products.php" class="continue-btn">← Continue Shopping</a>
+    <a href="style_feed.php" class="continue-btn" style="background: #e1306c;">Feed</a>
+    <a href="negotiation.php" class="continue-btn" style="background: #3498db;">Negotiate</a>
+    <a href="escrow_dashboard.php" class="continue-btn" style="background: #f39c12;">Escrow</a>
     <a href="order_history.php">My Orders</a>
     <a href="login.php?logout=1">Logout</a>
-  </div>
+</div>
 </div>
 
 <div class="page">

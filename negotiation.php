@@ -16,9 +16,8 @@ $message = '';
 $error = '';
 $success = '';
 
-// ============================================
-// GET PRODUCT AND SELLER INFO
-// ============================================
+$product = null; 
+
 if ($product_id > 0) {
     $product_query = $connect->prepare("
         SELECT c.*, u.user_id as seller_user_id, u.name as seller_name, u.surname as seller_surname, u.username as seller_username
@@ -28,11 +27,39 @@ if ($product_id > 0) {
     ");
     $product_query->bind_param("i", $product_id);
     $product_query->execute();
-    $product = $product_query->get_result()->fetch_assoc();
+    $result = $product_query->get_result();
+    $product = $result->fetch_assoc();
     $product_query->close();
     
     if ($product) {
         $seller_id = $product['seller_user_id'];
+    }
+}
+
+// If product not found with join, try without join
+if (!$product && $product_id > 0) {
+    $product_query2 = $connect->prepare("SELECT * FROM clothes WHERE product_id = ?");
+    $product_query2->bind_param("i", $product_id);
+    $product_query2->execute();
+    $product = $product_query2->get_result()->fetch_assoc();
+    $product_query2->close();
+    
+    if ($product) {
+        $seller_id = $product['seller_id'] ?? 0;
+        // Get seller name
+        if ($seller_id > 0) {
+            $seller_query = $connect->prepare("SELECT name, surname, username FROM users WHERE user_id = ?");
+            $seller_query->bind_param("i", $seller_id);
+            $seller_query->execute();
+            $seller = $seller_query->get_result()->fetch_assoc();
+            if ($seller) {
+                $product['seller_name'] = $seller['name'] ?? '';
+                $product['seller_surname'] = $seller['surname'] ?? '';
+                $product['seller_username'] = $seller['username'] ?? '';
+                $product['seller_user_id'] = $seller_id;
+            }
+            $seller_query->close();
+        }
     }
 }
 
@@ -70,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['make_offer'])) {
                 INSERT INTO negotiations (buyer_id, seller_id, offered_price, message, expires_at) 
                 VALUES (?, ?, ?, ?, ?)
             ");
-            $insert_stmt->bind_param("iids", $user_id, $seller_id, $offered_price, $message_text, $expires_at);
+            // FIXED: 5 variables, 5 types (i = integer, i = integer, d = decimal, s = string, s = string)
+            $insert_stmt->bind_param("iidss", $user_id, $seller_id, $offered_price, $message_text, $expires_at);
             
             if ($insert_stmt->execute()) {
                 $negotiation_id = $insert_stmt->insert_id;
@@ -95,9 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['make_offer'])) {
     }
 }
 
-// ============================================
-// HANDLE COUNTER OFFER (SELLER)
-// ============================================
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['counter_offer'])) {
     $negotiation_id = intval($_POST['negotiation_id']);
     $counter_price = floatval($_POST['counter_price']);
@@ -147,9 +172,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['counter_offer'])) {
     }
 }
 
-// ============================================
-// HANDLE ACCEPT OFFER
-// ============================================
 if (isset($_GET['accept'])) {
     $negotiation_id = intval($_GET['accept']);
     
@@ -216,9 +238,6 @@ if (isset($_GET['accept'])) {
     }
 }
 
-// ============================================
-// HANDLE REJECT OFFER
-// ============================================
 if (isset($_GET['reject'])) {
     $negotiation_id = intval($_GET['reject']);
     
@@ -234,9 +253,6 @@ if (isset($_GET['reject'])) {
     exit();
 }
 
-// ============================================
-// GET NEGOTIATION DETAILS
-// ============================================
 $negotiation = null;
 if ($negotiation_id > 0) {
     $neg_detail_query = $connect->prepare("
@@ -264,9 +280,6 @@ if ($negotiation_id > 0) {
     }
 }
 
-// ============================================
-// GET ALL NEGOTIATIONS FOR USER
-// ============================================
 $negotiations_query = $connect->prepare("
     SELECT n.*, 
            u1.name as buyer_name, u1.surname as buyer_surname,
@@ -481,7 +494,9 @@ $negotiations_query->close();
             <h1><i class="fas fa-handshake"></i> Negotiation Hub</h1>
             <div class="header-links">
                 <a href="products.php" class="nav-btn"><i class="fas fa-store"></i> Shop</a>
+                <a href="style_feed.php" class="nav-btn"><i class="fas fa-images"></i> Feed</a>
                 <a href="escrow_dashboard.php" class="nav-btn"><i class="fas fa-shield-alt"></i> Escrow</a>
+                <a href="cart.php" class="nav-btn"><i class="fas fa-shopping-cart"></i> Cart</a>
                 <a href="dashboard.php" class="nav-btn"><i class="fas fa-user"></i> Profile</a>
                 <a href="login.php?logout=1" style="color: #ff6b6b;">Logout</a>
             </div>
@@ -604,26 +619,35 @@ $negotiations_query->close();
             </div>
         
         <!-- Make Offer Form (Product View) -->
-        <?php elseif ($product && $product['seller_user_id']): ?>
+        <?php elseif (isset($product) && $product && isset($product['product_id'])): ?>
             <div class="section">
                 <h2>📦 Make an Offer</h2>
                 <div class="product-card">
                     <div class="info">
-                        <h3><?php echo htmlspecialchars($product['product_name']); ?></h3>
-                        <div class="price">R<?php echo number_format($product['price'], 2); ?></div>
-                        <div class="seller">👤 Seller: <?php echo htmlspecialchars($product['seller_name'] . ' ' . $product['seller_surname']); ?></div>
-                        <?php if ($product['description']): ?>
+                        <h3><?php echo htmlspecialchars($product['product_name'] ?? 'Product'); ?></h3>
+                        <div class="price">R<?php echo number_format($product['price'] ?? 0, 2); ?></div>
+                        <div class="seller">👤 Seller: <?php echo htmlspecialchars(($product['seller_name'] ?? 'Unknown') . ' ' . ($product['seller_surname'] ?? '')); ?></div>
+                        <?php if (isset($product['description']) && $product['description']): ?>
                             <div style="color: #666; margin-top: 8px;"><?php echo htmlspecialchars($product['description']); ?></div>
                         <?php endif; ?>
                     </div>
-                    <?php if ($user_id != $product['seller_user_id']): ?>
+                    <?php 
+                    $seller_user_id = $product['seller_user_id'] ?? $product['seller_id'] ?? 0;
+                    if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != $seller_user_id): 
+                    ?>
                         <div>
                             <button onclick="document.getElementById('offerForm').style.display='block'" class="btn btn-primary">
                                 <i class="fas fa-gavel"></i> Make Offer
                             </button>
                         </div>
                     <?php else: ?>
-                        <div style="color: #f39c12;">You cannot negotiate on your own product</div>
+                        <div style="color: #f39c12;">
+                            <?php if (!isset($_SESSION['user_id'])): ?>
+                                Please <a href="login.php">login</a> to make an offer
+                            <?php else: ?>
+                                You cannot negotiate on your own product
+                            <?php endif; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -631,16 +655,18 @@ $negotiations_query->close();
             <div id="offerForm" class="section" style="display: <?php echo isset($_POST['make_offer']) ? 'block' : 'none'; ?>">
                 <h2>💬 Submit Your Offer</h2>
                 <form method="POST" class="offer-form">
-                    <input type="hidden" name="product_id" value="<?php echo $product['product_id']; ?>">
-                    <input type="hidden" name="seller_id" value="<?php echo $product['seller_user_id']; ?>">
+                    <input type="hidden" name="product_id" value="<?php echo $product['product_id'] ?? ''; ?>">
+                    <input type="hidden" name="seller_id" value="<?php echo $product['seller_user_id'] ?? $product['seller_id'] ?? ''; ?>">
                     
                     <div class="form-group">
                         <label>Your Offer Price (R) <span style="color: #e74c3c;">*</span></label>
                         <input type="number" name="offered_price" step="0.01" min="0.01" 
-                               value="<?php echo number_format($product['price'] * 0.85, 2); ?>" required>
+                               value="<?php echo isset($product['price']) ? number_format($product['price'] * 0.85, 2) : ''; ?>" required>
+                        <?php if (isset($product['price'])): ?>
                         <div style="font-size: 12px; color: #999; margin-top: 4px;">
                             Suggested: 85% of listing price (R<?php echo number_format($product['price'] * 0.85, 2); ?>)
                         </div>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
@@ -674,7 +700,7 @@ $negotiations_query->close();
             <div class="section">
                 <h2><i class="fas fa-list"></i> Your Negotiations</h2>
                 
-                <?php if ($negotiations->num_rows > 0): ?>
+                <?php if ($negotiations && $negotiations->num_rows > 0): ?>
                     <?php while ($neg = $negotiations->fetch_assoc()): 
                         $is_buyer = ($neg['buyer_id'] == $user_id);
                         $status_class = $neg['status'];
@@ -683,13 +709,13 @@ $negotiations_query->close();
                         <div class="neg-header">
                             <div>
                                 <div style="font-weight: 600; font-size: 16px;">
-                                    <?php echo $is_buyer ? '← ' . $neg['seller_name'] . ' ' . $neg['seller_surname'] : $neg['buyer_name'] . ' ' . $neg['buyer_surname'] . ' →'; ?>
+                                    <?php echo $is_buyer ? '← ' . ($neg['seller_name'] ?? 'Unknown') . ' ' . ($neg['seller_surname'] ?? '') : ($neg['buyer_name'] ?? 'Unknown') . ' ' . ($neg['buyer_surname'] ?? '') . ' →'; ?>
                                 </div>
-                                <div class="neg-price">R<?php echo number_format($neg['offered_price'], 2); ?></div>
+                                <div class="neg-price">R<?php echo number_format($neg['offered_price'] ?? 0, 2); ?></div>
                             </div>
                             <div>
-                                <span class="neg-status <?php echo $status_class; ?>"><?php echo ucfirst($status_class); ?></span>
-                                <?php if ($neg['counter_price']): ?>
+                                <span class="neg-status <?php echo $status_class; ?>"><?php echo ucfirst($status_class ?? 'pending'); ?></span>
+                                <?php if (isset($neg['counter_price']) && $neg['counter_price']): ?>
                                     <span style="font-size: 13px; color: #3498db; margin-left: 8px;">
                                         Counter: R<?php echo number_format($neg['counter_price'], 2); ?>
                                     </span>
@@ -697,14 +723,14 @@ $negotiations_query->close();
                             </div>
                         </div>
                         
-                        <?php if ($neg['last_message']): ?>
+                        <?php if (isset($neg['last_message']) && $neg['last_message']): ?>
                             <div class="neg-message">💬 "<?php echo htmlspecialchars($neg['last_message']); ?>"</div>
                         <?php endif; ?>
                         
                         <div class="neg-meta">
-                            <?php echo date('M d, Y H:i', strtotime($neg['created_at'])); ?> &middot; 
+                            <?php echo date('M d, Y H:i', strtotime($neg['created_at'] ?? 'now')); ?> &middot; 
                             <?php echo $is_buyer ? 'You are the buyer' : 'You are the seller'; ?>
-                            <?php if ($neg['expires_at']): ?>
+                            <?php if (isset($neg['expires_at']) && $neg['expires_at']): ?>
                                 &middot; Expires: <?php echo date('M d, Y', strtotime($neg['expires_at'])); ?>
                             <?php endif; ?>
                         </div>
@@ -713,13 +739,13 @@ $negotiations_query->close();
                             <a href="negotiation.php?id=<?php echo $neg['negotiation_id']; ?>" class="btn btn-primary btn-sm">
                                 <i class="fas fa-eye"></i> View Details
                             </a>
-                            <?php if ($neg['status'] == 'pending' && !$is_buyer): ?>
+                            <?php if (($neg['status'] ?? '') == 'pending' && !$is_buyer): ?>
                                 <a href="negotiation.php?accept=<?php echo $neg['negotiation_id']; ?>" class="btn btn-success btn-sm" 
                                    onclick="return confirm('Accept this offer?')">
                                     <i class="fas fa-check"></i> Accept
                                 </a>
                             <?php endif; ?>
-                            <?php if ($neg['status'] == 'accepted' && $neg['order_id']): ?>
+                            <?php if (($neg['status'] ?? '') == 'accepted' && isset($neg['order_id']) && $neg['order_id']): ?>
                                 <a href="customer_order.php?order_id=<?php echo $neg['order_id']; ?>" class="btn btn-primary btn-sm">
                                     <i class="fas fa-box"></i> View Order
                                 </a>

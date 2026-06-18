@@ -524,9 +524,13 @@ if ($ratings_table_check && $ratings_table_check->num_rows > 0) {
                 <p>Welcome, <?php echo htmlspecialchars($_SESSION['admin_name']); ?> (<?php echo htmlspecialchars($_SESSION['admin_username']); ?>)</p>
             </div>
             <div class="header-actions">
-                <a href="admin_clothes.php" class="nav-btn">👕 Manage Clothing</a>
-                <a href="admin_login.php?logout=1" class="logout-btn" onclick="sessionStorage.clear();">Logout</a>
-            </div>
+    <a href="admin_clothes.php" class="nav-btn">Manage Clothing</a>
+    <a href="style_feed.php" class="nav-btn">Feed</a>
+    <a href="negotiation.php" class="nav-btn">Negotiate</a>
+    <a href="escrow_dashboard.php" class="nav-btn">Escrow</a>
+    <a href="dashboard.php" class="nav-btn">User Dashboard</a>
+    <a href="admin_login.php?logout=1" class="logout-btn">Logout</a>
+</div>
         </div>
 
         <?php if ($message): ?>

@@ -1,5 +1,5 @@
 <?php
-// user_score.php - User Score Dashboard
+// user_score.php - User Score Dashboard (FIXED)
 session_start();
 include "DBConn.php";
 
@@ -126,7 +126,7 @@ $score_data = $connect->query("SELECT * FROM user_scores WHERE user_id = $user_i
 // Get detailed metrics
 $metrics_query = $connect->query("
     SELECT 
-        COUNT(DISTINCT CASE WHEN order_status = 'delivered' AND buyer_confirmed = 1 THEN order_id END) as sales_count,
+        COUNT(DISTINCT CASE WHEN o.order_status = 'delivered' AND o.buyer_confirmed = 1 THEN o.order_id END) as sales_count,
         COUNT(DISTINCT r.rating_id) as rating_count,
         AVG(r.rating) as avg_rating,
         COUNT(DISTINCT CASE WHEN n.status = 'accepted' THEN n.negotiation_id END) as offers_accepted
@@ -138,11 +138,11 @@ $metrics_query = $connect->query("
 ");
 $metrics = $metrics_query->fetch_assoc();
 
-// Get recent ratings
+// Get recent ratings - FIXED: use 'user_id' instead of 'rater_id'
 $ratings_query = $connect->prepare("
     SELECT r.*, u.username, r.created_at
     FROM ratings r
-    JOIN users u ON r.rater_id = u.user_id
+    JOIN users u ON r.user_id = u.user_id
     WHERE r.seller_id = ?
     ORDER BY r.created_at DESC
     LIMIT 5
@@ -310,15 +310,6 @@ $ratings_query->close();
         .btn-outline { background: white; color: #667eea; border: 2px solid #667eea; }
         .btn-outline:hover { background: #667eea; color: white; }
         
-        .tier-badge-lg {
-            display: inline-block;
-            padding: 8px 24px;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 20px;
-            color: white;
-        }
-        
         .empty-state { text-align: center; padding: 20px; color: #999; }
         .empty-state i { font-size: 32px; color: #ddd; margin-bottom: 10px; display: block; }
         
@@ -337,6 +328,9 @@ $ratings_query->close();
             <div class="header-links">
                 <a href="dashboard.php">Dashboard</a>
                 <a href="products.php">Shop</a>
+                <a href="style_feed.php">Feed</a>
+                <a href="negotiation.php">Negotiate</a>
+                <a href="escrow_dashboard.php">Escrow</a>
                 <a href="login.php?logout=1" style="color: #ff6b6b;">Logout</a>
             </div>
         </div>
@@ -485,7 +479,7 @@ $ratings_query->close();
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
             <a href="dashboard.php" class="btn btn-primary"><i class="fas fa-home"></i> Dashboard</a>
             <a href="products.php" class="btn btn-outline"><i class="fas fa-store"></i> Browse Products</a>
-            <?php if ($_SESSION['user_role'] == 'seller'): ?>
+            <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'seller'): ?>
                 <a href="seller_dashboard.php" class="btn btn-outline"><i class="fas fa-plus"></i> Manage Products</a>
             <?php endif; ?>
         </div>

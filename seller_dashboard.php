@@ -564,10 +564,13 @@ if ($ratings_table_check && $ratings_table_check->num_rows > 0) {
                 <p>Welcome, <?php echo htmlspecialchars($_SESSION['name'] ?? $_SESSION['username']); ?> — manage your own clothing listings</p>
             </div>
             <div class="header-actions">
-                <a href="dashboard.php" class="nav-btn">← My Profile</a>
-                <a href="products.php" class="nav-btn">Shop</a>
-                <a href="login.php?logout=1" class="logout-btn">Logout</a>
-            </div>
+    <a href="dashboard.php" class="nav-btn">← My Profile</a>
+    <a href="style_feed.php" class="nav-btn">Feed</a>
+    <a href="negotiation.php" class="nav-btn">Negotiate</a>
+    <a href="escrow_dashboard.php" class="nav-btn">Escrow</a>
+    <a href="products.php" class="nav-btn">🛍️ Shop</a>
+    <a href="login.php?logout=1" class="logout-btn">Logout</a>
+</div>
         </div>
 
         <?php if ($message): ?>

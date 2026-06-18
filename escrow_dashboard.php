@@ -215,11 +215,13 @@ $stats_query->close();
         <div class="header">
             <h1><i class="fas fa-shield-alt"></i> Escrow Dashboard</h1>
             <div class="header-links">
-                <a href="negotiation.php" class="nav-btn"><i class="fas fa-handshake"></i> Negotiations</a>
-                <a href="products.php" class="nav-btn"><i class="fas fa-store"></i> Shop</a>
-                <a href="dashboard.php" class="nav-btn"><i class="fas fa-user"></i> Profile</a>
-                <a href="login.php?logout=1" style="color: #ff6b6b;">Logout</a>
-            </div>
+    <a href="products.php" class="nav-btn"><i class="fas fa-store"></i> Shop</a>
+    <a href="style_feed.php" class="nav-btn"><i class="fas fa-images"></i> Feed</a>
+    <a href="negotiation.php" class="nav-btn"><i class="fas fa-handshake"></i> Negotiate</a>
+    <a href="cart.php" class="nav-btn"><i class="fas fa-shopping-cart"></i> Cart</a>
+    <a href="dashboard.php" class="nav-btn"><i class="fas fa-user"></i> Profile</a>
+    <a href="login.php?logout=1" style="color: #ff6b6b;">Logout</a>
+</div>
         </div>
         
         <?php if ($message): ?>

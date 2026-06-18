@@ -337,15 +337,24 @@ $cart_count_stmt->close();
 <div class="header">
     <h1>&#128734; Pastimes Shop</h1>
     <div class="header-right">
-        <a href="cart.php" class="cart-btn">
-            &#128722; Cart
-            <?php if ($cart_count > 0): ?>
-                <span class="cart-badge"><?php echo $cart_count; ?></span>
-            <?php endif; ?>
-        </a>
-        <a href="dashboard.php" class="logout-link">My Profile</a>
-        <a href="login.php?logout=1" class="logout-link">Logout</a>
-    </div>
+    <a href="style_feed.php" class="cart-btn" style="background: #e1306c; color: white;">
+        <i class="fas fa-images"></i> Feed
+    </a>
+    <a href="negotiation.php" class="cart-btn" style="background: #3498db; color: white;">
+        <i class="fas fa-handshake"></i> Negotiate
+    </a>
+    <a href="escrow_dashboard.php" class="cart-btn" style="background: #f39c12; color: white;">
+        <i class="fas fa-shield-alt"></i> Escrow
+    </a>
+    <a href="cart.php" class="cart-btn">
+        🛒 Cart
+        <?php if ($cart_count > 0): ?>
+            <span class="cart-badge"><?php echo $cart_count; ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="dashboard.php" class="logout-link">My Profile</a>
+    <a href="login.php?logout=1" class="logout-link">Logout</a>
+</div>
 </div>
 
 <div class="filters-bar">
@@ -407,7 +416,9 @@ $cart_count_stmt->close();
                         <div class="product-category">
                             <?php echo htmlspecialchars($p['category'] . ($p['subcategory'] ? ' / ' . $p['subcategory'] : '')); ?>
                         </div>
-                        <div class="product-name"><?php echo htmlspecialchars($p['product_name']); ?></div>
+                        <a href="product_detail.php?id=<?php echo $p['product_id']; ?>" style="text-decoration: none; color: inherit;">
+                            <div class="product-name"><?php echo htmlspecialchars($p['product_name']); ?></div>
+                        </a>
                         <div class="product-desc"><?php echo htmlspecialchars($p['description'] ?? ''); ?></div>
                         <div class="product-price-row">
                             <?php if ($p['on_sale'] && $p['sale_price']): ?>
@@ -420,14 +431,22 @@ $cart_count_stmt->close();
                         <div class="stock-info <?php echo $low_stock ? 'stock-low' : ''; ?>">
                             <?php echo $low_stock ? 'Only ' . $p['stock_quantity'] . ' left!' : $p['stock_quantity'] . ' in stock'; ?>
                         </div>
+                        <a href="negotiation.php?product_id=<?php echo $p['product_id']; ?>" class="btn btn-success" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; color: white; background: #27ae60; font-size: 12px;">
+                            <i class="fas fa-handshake"></i> Offer
+                        </a>
                     </div>
 
-                    <form class="add-to-cart-form" method="POST">
-                        <input type="hidden" name="product_id" value="<?php echo $p['product_id']; ?>">
-                        <input type="number" name="quantity" class="qty-input" value="1"
-                               min="1" max="<?php echo $p['stock_quantity']; ?>">
-                        <button type="submit" name="add_to_cart" class="add-btn">&#43; Add to Cart</button>
-                    </form>
+                    <div class="add-to-cart-form">
+                        <form method="POST" style="display: flex; gap: 8px; width: 100%;">
+                            <input type="hidden" name="product_id" value="<?php echo $p['product_id']; ?>">
+                            <input type="number" name="quantity" class="qty-input" value="1"
+                                min="1" max="<?php echo $p['stock_quantity']; ?>">
+                            <button type="submit" name="add_to_cart" class="add-btn">+ Add</button>
+                            <a href="product_detail.php?id=<?php echo $p['product_id']; ?>" class="add-btn" style="background: #6c757d; text-decoration: none; text-align: center; padding: 8px 12px; border-radius: 8px; color: white; font-weight: 600;">
+                                View
+                            </a>
+                        </form>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
